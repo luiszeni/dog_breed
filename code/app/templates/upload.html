@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload</title>
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+	<script type="text/javascript">
+		$(document).ready(function(){
+			$("#processing").hide()
+
+			$('#photo').change(function() {
+				$("#form").hide() 
+				$("#results").hide() 
+				$("#processing").slideDown()
+				$('#form').submit();
+			});
+		});
+	</script>
+</head>
+<body>
+	<div class="container">
+
+		<hr>
+
+	    <form id="form" method=POST enctype=multipart/form-data action="{{ url_for('upload') }}">
+		    <b>Select one image to process:</b> <br><input type=file multiple="false" accept="image/png, image/jpeg" name=photo id="photo">
+		</form>
+		
+		<h1 id="processing"> Processing image... </h1>
+		
+		<hr>
+
+		<div id="results">
+			{{ result_content|safe }}
+		</div>
+		
+	</div>
+</body>
+</html>
