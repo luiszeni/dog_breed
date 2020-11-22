@@ -18,8 +18,8 @@ import pycocotools.mask as mask_util
 
 from collections import defaultdict
 
-import utils
-
+import util.utils as utils
+from pdb import set_trace as pause
 
 class CocoEvaluator(object):
     def __init__(self, coco_gt, iou_types):
@@ -79,11 +79,10 @@ class CocoEvaluator(object):
         for original_id, prediction in predictions.items():
             if len(prediction) == 0:
                 continue
-
             boxes = prediction["boxes"]
             boxes = convert_to_xywh(boxes).tolist()
-            scores = prediction["scores"].tolist()
-            labels = prediction["labels"].tolist()
+            scores = prediction["scores_breed"][:,0].tolist()
+            labels = prediction["labels_breed"][:,0].tolist()
 
             coco_results.extend(
                 [
@@ -103,7 +102,6 @@ class CocoEvaluator(object):
         for original_id, prediction in predictions.items():
             if len(prediction) == 0:
                 continue
-
             scores = prediction["scores"]
             labels = prediction["labels"]
             masks = prediction["masks"]

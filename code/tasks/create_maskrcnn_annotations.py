@@ -108,14 +108,15 @@ def save_txt(path, data):
 			f.write("%s\n" % item)
 
 if __name__ == '__main__':
-	# set numpy seed to reproduce the split of the train/test sets
+	# set numpy seed to reproduce the split of the train/val sets
 	np.random.seed(666)
 
 	model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True, box_nms_thresh=0.01).cuda()
 	model.eval()
 
-	train_annot = []
-	test_annot  = []
+	train_annot  = []
+	val_annot    = []
+	nonono_annot = []
 
 	dog_folders = glob('data/dogs/train/*')
 
@@ -123,20 +124,20 @@ if __name__ == '__main__':
 		ibages = glob(dog_folder + '/*.jpg')
 		print("processing [" + str(i) + " of " + str(len(dog_folders)) + "]: " + dog_folder.split('/')[-1])
 		
-		test_set  = []
-		train_set = []
+		train_set  = []
+		nonono_set = []
 
 		for img_path in ibages:
 			# print(img_path)
 			scores, boxes, masks = get_prediction(img_path, visualize=False)
 			
-			if scores is None: # if no dog is found, image is used as test
+			if scores is None: # if no dog is not found, we add this image to the nonono set
 				if boxes is None:
-					test_set.append(img_path)
+					nonono_set.append(img_path)
 				continue
 
-			if scores.shape[0] > 1: # if more than one dog is found, image is used as test
-				test_set.append(img_path)
+			if scores.shape[0] > 1: # if more than one dog is found, image is nononononononononononono 
+				nonono_set.append(img_path)
 			else:
 				train_set.append(img_path)
 			
@@ -146,22 +147,11 @@ if __name__ == '__main__':
 			# save the maskrcnn artifacts
 			save_object(annotations, img_path.replace('.jpg', '.pkl'))
 
-		total_imges    = len(train_set) + len(test_set)
-
-		move_from_test = int(total_imges*0.2) - len(test_set)
-		
-		if move_from_test > 0:
-			train_set = np.array(train_set)
-			np.random.shuffle(train_set)
-
-			test_set += train_set[:move_from_test].tolist()
-			train_set = train_set[move_from_test:].tolist()
-
-		test_annot  += test_set
-		train_annot += train_set
+		train_annot  += train_set
+		nonono_annot += nonono_set
 
 	save_txt('data/dogs/train.txt', train_annot)
-	save_txt('data/dogs/test.txt', test_annot)
+	save_txt('data/dogs/nonono.txt', nonono_annot)
 
 	print('DONE!')
 		

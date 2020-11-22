@@ -1,10 +1,14 @@
 <div class="row">
-    <div class="col-sm-4">
+    <div class="col-sm-2">
       <h3>Input Image:</h3>
       <img src="{{ img_input|safe }}" alt="Doggo" width="100%">
     </div>
-    <div class="col-sm-8">
-      <h3>Results:</h3>
-      {{ results|safe }}
+    <div class="col-sm-5">
+      <h3>Results on training classes:</h3>
+      {{ results_train|safe }}
+    </div>
+    <div class="col-sm-5">
+      <h3>Results on enroled classes:</h3>
+      {{ results_enroll|safe }}
     </div>
 </div>

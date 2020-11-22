@@ -693,7 +693,8 @@ class RoIHeads(torch.nn.Module):
                                box_regression,  # type: Tensor
                                proposals,       # type: List[Tensor]
                                image_shapes,     # type: List[Tuple[int, int]]
-                               class_logits_breed
+                               class_logits_breed,
+                               feature_map
                                ):
         # type: (...) -> Tuple[List[Tensor], List[Tensor], List[Tensor]]
         device = class_logits.device
@@ -713,7 +714,9 @@ class RoIHeads(torch.nn.Module):
         all_scores = []
         all_labels = []
         all_scores_breed = []
+        really_all_scores_breed = []
         all_labels_breed = []
+        all_features = []
 
         for boxes, scores, image_shape, scores_breed in zip(pred_boxes_list, pred_scores_list, image_shapes, pred_scores_list_breed):
            
@@ -766,16 +769,18 @@ class RoIHeads(torch.nn.Module):
             # print(scores_breed[idx_sel].sum(dim=1))
 
             sel = scores_breed[idx_sel]
+            selected_features = feature_map[idx_sel]
 
             breed_scores, breed_labels = sel.sort(dim=1, descending=True)
 
             all_scores_breed.append(breed_scores[:,:5])
             all_labels_breed.append(breed_labels[:,:5])
-            
+            really_all_scores_breed.append(sel)
+            all_features.append(selected_features)
             # print(breed_labels)
 
 
-        return all_boxes, all_scores, all_labels, all_scores_breed, all_labels_breed
+        return all_boxes, all_scores, all_labels, all_scores_breed, all_labels_breed, really_all_scores_breed, all_features
 
     def forward(self,
                 features,      # type: Dict[str, Tensor]
@@ -826,7 +831,7 @@ class RoIHeads(torch.nn.Module):
                 "loss_classifier_breed": loss_classifier_breed
             }
         else:
-            boxes, scores, labels, scores_breed, labels_breed = self.postprocess_detections(class_logits, box_regression, proposals, image_shapes, class_logits_breed)
+            boxes, scores, labels, scores_breed, labels_breed, really_all_scores_breed, all_features = self.postprocess_detections(class_logits, box_regression, proposals, image_shapes, class_logits_breed, box_features)
 
             num_images = len(boxes)
             for i in range(num_images):
@@ -837,6 +842,8 @@ class RoIHeads(torch.nn.Module):
                         "scores": scores[i],
                         "labels_breed": labels_breed[i],
                         "scores_breed": scores_breed[i],
+                        "really_all_scores_breed": really_all_scores_breed[i],
+                        "all_features": all_features[i],
                     }
                 )
 

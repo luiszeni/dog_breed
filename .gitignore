@@ -4,6 +4,7 @@ __pycache__/
 data/
 snapshots/
 matlab/
+static/
 code/app/static
 octave-workspace
 # OS Generated #
@@ -16,3 +17,4 @@ Thumbs.db
 *.so
 *.cu.o
 *.npy
+*.zip

@@ -24,9 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip3 install torch==1.6.0 torchvision==0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip3 install opencv-python==4.2.0.34
-RUN pip3 install cython scipy matplotlib pycocotools sklearn
-RUN pip3 install Pillow==6.1
-RUN pip3 install tqdm
+RUN pip3 install cython scipy matplotlib pycocotools sklearn tqdm
+RUN pip3 install flask Flask-Uploads werkzeug==0.16.1
 
 # enables tmux to use mouse
 RUN echo "set -g mouse on" > ~/.tmux.conf

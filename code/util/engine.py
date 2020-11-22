@@ -12,9 +12,9 @@ import torch
 
 import torchvision.models.detection.mask_rcnn
 
-from coco_utils import get_coco_api_from_dataset
-from coco_eval import CocoEvaluator
-import utils
+from util.coco_utils import get_coco_api_from_dataset
+from datasets.coco_eval import CocoEvaluator
+import util.utils as utils
 
 from pdb import set_trace as pause
 
@@ -79,9 +79,9 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
-        if i > 0 and i % 250 == 0:
-            print("saving intermediary snap")
-            save_ckpt('snapshots', epoch, i, model)
+        # if i > 0 and i % 250 == 0:
+        #     print("saving intermediary snap")
+        #     save_ckpt('snapshots', epoch, i, model)
 
     return metric_logger
 
@@ -112,7 +112,7 @@ def evaluate(model, data_loader, device):
     iou_types = _get_iou_types(model)
     coco_evaluator = CocoEvaluator(coco, iou_types)
 
-    for images, targets in metric_logger.log_every(data_loader, 100, header):
+    for i, images, targets in metric_logger.log_every(data_loader, 100, header):
         images = list(img.to(device) for img in images)
 
         torch.cuda.synchronize()
@@ -137,4 +137,5 @@ def evaluate(model, data_loader, device):
     coco_evaluator.accumulate()
     coco_evaluator.summarize()
     torch.set_num_threads(n_threads)
+
     return coco_evaluator

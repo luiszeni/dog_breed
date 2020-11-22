@@ -57,9 +57,7 @@ You should have the Nvidia-docker installed in your host machine
 2. Unzip it on data folder
     ```Shell
     mkdir data
-    cd data
-    unzip dogs.zip
-    cd ..
+    unzip dogs.zip -d data/
     ```
 3. You shold end with the following structure:
     ```Shell
@@ -69,10 +67,53 @@ You should have the Nvidia-docker installed in your host machine
                 train/
                 recognition/
     ```
+
 4. Preprocess the dataset using the processing script (run the comand from the root of this repo directory):
     ```Shell
     python3 code/tasks/create_maskrcnn_annotations.py   
     ```
-This code will run a pretrained mask-rcnn  on all the training dataset. 
+This code will run a pretrained mask-rcnn on all images of the dogs/train folder. Based on the detections I split the images into 2 groups. Valid and Invalid images. An image is invalid if it contains no dog or more than one dog detections (as the provided annotations have only one dog breed per image we ignore images with more than one dog to avoid problems in the optmization of the model during the training.). From the valid images the script randomly select 10 images from each breed as validation and the rest as training images.
+
+### Training the model to detect dogs and its breeds.
+
+I chose to use the mask-RCNN as base model to this project. I could train an simple and strangtfoward classification pipeline to solve the problem. However I think that using the mask-RCNN would be more fun. I used a coco-dataset pretrained model as base and modified it to segment/detect/classify if a dog is present or not in the image.  If a dog is found it will also classify the detections altorught all the 100 dog breeds. I could directily detect all the dog breeds without these two step-classification (if dog -> dog_breed). Anyway,  as our objective is also enroll new dog breeds after the training it is important that the network recognize if a dog is present or not. 
+
+
+1. Put the model to train:
+   ```Shell
+    python3 code/tasks/train.py   
+    ```
+
+2.  Wait for a long time until if finish training.....
+
+
+### Testing the best trained model.
+
+1. Just run:
+   ```Shell
+    python3 code/tasks/demo.py   
+    ```
 
   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Future Work and improvements:
+
+- Use a triplet loss to 
+- Include data augumentation tricks to improve the generability of the model
+-
+-
+-

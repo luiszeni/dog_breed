@@ -1,4 +1,6 @@
-from dog_breed_dataset import DogBreedDataset
+import _init_paths
+
+from datasets.dog_breed_dataset import DogBreedDataset
 
 import os
 import numpy as np
@@ -6,13 +8,13 @@ import torch
 from PIL import Image
 
 import torchvision
-from faster_rcnn import FastRCNNPredictor
-from mask_rcnn   import MaskRCNNPredictor
-from mask_rcnn   import maskrcnn_resnet50_fpn
+from model.faster_rcnn import FastRCNNPredictor
+from model.mask_rcnn   import MaskRCNNPredictor
+from model.mask_rcnn   import maskrcnn_resnet50_fpn
 
-from engine import train_one_epoch, evaluate
-import utils
-import transforms as T
+from util.engine import train_one_epoch, evaluate
+import util.utils as utils
+import util.transforms as T
 from pdb import set_trace as pause
 
 def get_transform(train):
@@ -40,25 +42,12 @@ if __name__ == "__main__":
 
     device = torch.device('cuda') 
 
-    # use our dataset and defined transformations
-    dataset      = DogBreedDataset('', get_transform(train=True))
-    dataset_test = DogBreedDataset('', get_transform(train=False))
+    dataset = DogBreedDataset('', get_transform(train=True), data_sub_set="train")
 
-    # define training and validation data loaders
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=4, shuffle=True, num_workers=6,
-        collate_fn=utils.collate_fn)
+    data_loader = torch.utils.data.DataLoader( dataset, batch_size=5, shuffle=True, num_workers=6, collate_fn=utils.collate_fn)
 
-    data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4,
-        collate_fn=utils.collate_fn)
-
-  
-
-    # get the model using our helper function
     model = maskrcnn_resnet50_fpn(pretrained=True, num_classes_breed=101, num_classes_newset=2)
 
-    # move model to the right device
     model.to(device)
 
     # construct an optimizer
@@ -69,20 +58,15 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                    step_size=8,
                                                    gamma=0.1)
-
-    # let's train it for 10 epochs
-    num_epochs = 20
-
-
+    num_epochs = 26
 
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
         # update the learning rate
         lr_scheduler.step()
+        
         save_ckpt('snapshots', epoch, model)
-        print("saved")
-        # evaluate on the test dataset
-        # evaluate(model, data_loader_test, device=device)
-
-    print("That's it!")
+        print("saved snapshot epoch:", epoch)
+    
+    print("DONE!")
