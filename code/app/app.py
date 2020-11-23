@@ -65,6 +65,7 @@ def get_prediction(img_path, breed_name, threshold=0.5):
 		scores_breed = scores_breed[selected_instances]
 		all_features = all_features[selected_instances]
 
+		saved_imgs   = []
 		for i in range(scores.shape[0]):
 			
 			img_copy = img.copy()
@@ -90,7 +91,7 @@ def get_prediction(img_path, breed_name, threshold=0.5):
 			save_point = img_path.replace('.jpg', '_' + str(date.today()) + str(i) + '.jpg')
 			cv2.imwrite(save_point, img_copy)
 
-			
+			saved_imgs.append(save_point)
 			results_train += render_template('detection_result.html',  img_input=save_point, detections=top_breeds)
 
 
@@ -101,22 +102,29 @@ def get_prediction(img_path, breed_name, threshold=0.5):
 
 		probs = enroll_model['model'].predict_proba(all_features.detach().cpu().numpy())
 		
-		# neighbors_dist, neighbors_inst = enroll_model['model'].kneighbors(all_features.detach().cpu().numpy())
-		# neighbors_inst = enroll_model['model']._y[neighbors_inst]
 		
-		for prob in probs:
+		neighbors_dist, neighbors_inst = enroll_model['model'].kneighbors(all_features.detach().cpu().numpy())
+		neighbors_inst = enroll_model['model']._y[neighbors_inst]
+		
+		for i, prob in enumerate(probs):
 
 			enroll_labels = np.argsort(-prob)
 			enroll_scores = prob[enroll_labels]
 
-			top_breeds = ""
-			for j, breed_id in enumerate(enroll_labels[:5]):
-					breed = enroll_class_names[breed_id].replace('_', ' ').title()
-					breed_score = enroll_scores[j]
+			enroll_instances = neighbors_inst[i]
 
-					top_breeds += render_template('hist_line.html',  score=int(breed_score*100), class_name=breed)
+			if enroll_labels[0] == enroll_class_names.index('Unknow') or (enroll_instances == enroll_labels[0]).sum() < 3:
+				top_breeds = "Unknown breed..."
+			else:
 
-			results_enroll += render_template('detection_result.html',  img_input=save_point, detections=top_breeds)
+				top_breeds = ""
+				for j, breed_id in enumerate(enroll_labels[:5]):
+						breed = enroll_class_names[breed_id].replace('_', ' ').title()
+						breed_score = enroll_scores[j]
+
+						top_breeds += render_template('hist_line.html',  score=int(breed_score*100), class_name=breed)
+
+			results_enroll += render_template('detection_result.html',  img_input=saved_imgs[i], detections=top_breeds)
 
 
 	return results_train, results_enroll
@@ -125,6 +133,8 @@ def get_prediction(img_path, breed_name, threshold=0.5):
 if __name__ == "__main__":
 	model = maskrcnn_resnet50_fpn(pretrained=True, num_classes_breed=101, num_classes_newset=2)
 
+
+	# XD
 	load_name   = '../../snapshots/ckpt/model_epoch25.pth' 
 	enroll_name = load_name.replace('.pth', '') + '_enroll_model.pkl'
 
