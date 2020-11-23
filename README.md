@@ -1,18 +1,49 @@
-# Dog Breed Recognition, Detection, Segmentation and Enroling.
+# Dog Breed Recognition, Detection, Segmentation, and Enroling.
 
-This repo contains the code of a miniproject to a interview that I dit in 11/2020. The objective is to recognize dod breeds in images and enroll new breeds without re-training the model.  
+This repo contains the code of a mini-project to an interview that I did in November/2020. The objective is to recognize dog breeds in images and enroll new breeds without re-training the model. 
 
-### Requirements:
+I chose to use mask-RCNN as a base model for this project. I could train a simple and straightforward classification pipeline to solve the problem. However, I believe that using the mask-RCNN is more attractive as it allows to extract features only inside the dog detection boundaries. As it detects the dog, it solves the problem of multiple instances of different dog breeds in the same image.
+
+The model's training starts from a pretrained coco model witch already knows how to detect dogs and other object classes.  I modified the mask-rcnn model to deal only with two classes (background and dog). However, if a dog is found, the model will also classify the detections, although all the 100 dog breeds categories. I could directly detect all the dog breeds without this two step-classification (if dog -> dog_breed). Anyway,  as our objective is also to enroll new dog breeds after the training, the network must recognize if a dog is present or not in the images.
+
+Ok. Let's start.
+
+### System Requirements:
 - Linux OS (I did not tested it on other OS.)
 - python3 packages and versions used (listed using pip freeze):
 
-    - certifi==2020.6.20
-    - **TODO**
+    - click==7.1.2
+    - cycler==0.10.0
+    - Cython==0.29.21
+    - Flask==1.1.2
+    - Flask-Uploads==0.2.1
+    - future==0.18.2
+    - itsdangerous==1.1.0
+    - Jinja2==2.11.2
+    - joblib==0.17.0
+    - kiwisolver==1.3.1
+    - MarkupSafe==1.1.1
+    - matplotlib==3.3.3
+    - numpy==1.19.1
+    - opencv-python==4.2.0.34
+    - Pillow==7.2.0
+    - pycocotools==2.0.2
+    - pyparsing==2.4.7
+    - python-dateutil==2.8.1
+    - scikit-learn==0.23.2
+    - scipy==1.5.4
+    - six==1.15.0
+    - sklearn==0.0
+    - threadpoolctl==2.1.0
+    - torch==1.6.0+cu92
+    - torchvision==0.7.0+cu92
+    - tqdm==4.52.0
+    - Werkzeug==0.16.1
 
 
 - An Nnvidia GPU wuth suport to CUDA to train the model
     - I used cuda 10.2 and cudnn 7.0
-    - I used an Nvidia Titan Xp with 12G of memory. But it shold be ok to train if you have a GPU with at least 8Gb.
+    - I used an Nvidia Titan Xp with 12G of memory. But it should be ok to train if you have a GPU with at least 8Gb (Maybe you will need to reduce the batch size).
     - **NOTICE**: different versions of Pytorch have different memory usages.
 
 ### Installation 
@@ -23,7 +54,7 @@ This repo contains the code of a miniproject to a interview that I dit in 11/202
     ```
   
 2. [Optional]  Build the docker-machine and start it.
-You should have the Nvidia-docker installed in your host machine
+It would be best if you had the Nvidia-docker installed in your host machine.
 
     2.1. Enter in the docker folder inside the repo
     ```Shell
@@ -39,11 +70,11 @@ You should have the Nvidia-docker installed in your host machine
     ```
     2.4 Create a container using the image.  I prefer to mount an external volume with the code in a folder in the host machine. It makes it easier to edit the code using a GUI-text-editor or ide. This command will drop you in the container shell.
     ```Shell
-    docker run --gpus all -v  $(pwd):/root/dog_breed --shm-size 12G -ti \
+    docker run --gpus all -p 5000:5000 -v  $(pwd):/root/dog_breed --shm-size 12G -ti \
     --name dog_breed dog_breed
     ```
   
-    2.5 If, in any moment of the future, you exit the container, you can enter the container again using this command.
+    2.5 If, at any moment in the future, you exit the container, you can enter the container again using this command.
     ```Shell
     docker start -ai dog_breed 
     ```
@@ -54,66 +85,105 @@ You should have the Nvidia-docker installed in your host machine
 
 1. Download the dataset: https://drive.google.com/file/d/1DAyRYzZ9B-Nz5hLL9XIm3S3kDI5FBJH0/view
 
-2. Unzip it on data folder
+2. Unzip it in data folder
     ```Shell
     mkdir data
     unzip dogs.zip -d data/
     ```
-3. You shold end with the following structure:
+3. Preprocess the dataset using the processing script (run the command from the root of this repo directory):
+    ```Shell
+    python3 code/tasks/create_maskrcnn_annotations.py   
+    ```
+
+This code will run a pretrained mask-rcnn on all images of the dogs/train folder. Based on the detections, I split the images into two groups—valid and Invalid images. A picture is invalid if it contains no dog or more than one dog instance detections (as the provided annotations have only one dog breed per image, we ignore images with more than one dog to avoid problems in optimizing the model during the training.). 
+
+The mask-rcnn detections will be used as ground-truth of masks and detections to the dog breed dataset. Using this aproach, we do not need to annotate all these images. =).
+
+
+4. Download Coco dataset and its annotations
+    ```Shell
+    wget http://images.cocodataset.org/zips/train2014.zip
+    wget http://images.cocodataset.org/annotations/annotations_trainval2014.zip   
+    ```
+
+    Coco dataset will also be used during the training of the model. The data loader will only select images without dog examples. I used this to avoid that the model always expects that the image has dogs. Therefore, during the training, the model will see pictures with no dog from the coco dataset. 
+
+
+
+5. Unzip coco on data/coco folder
+    ```Shell
+    mkdir data/coco
+    unzip train2014.zip -d data/coco
+    unzip annotations_trainval2014.zip -d data/coco
+    ```
+
+6. You shold end with the following structure:
     ```Shell
     dog_breed/
         data/
             dogs/
                 train/
                 recognition/
+            coco/
+                train2014/
+                annotations/
     ```
 
-4. Preprocess the dataset using the processing script (run the comand from the root of this repo directory):
+### Testing the flask App with pretrained models.
+
+1. Download the pre-trained models and extract the file:
     ```Shell
-    python3 code/tasks/create_maskrcnn_annotations.py   
+    wget http://inf.ufrgs.br/~lfazeni/dog_breed/pretrained.tar.gz
+    tar -xzvf pretrained.tar.gz
     ```
-This code will run a pretrained mask-rcnn on all images of the dogs/train folder. Based on the detections I split the images into 2 groups. Valid and Invalid images. An image is invalid if it contains no dog or more than one dog detections (as the provided annotations have only one dog breed per image we ignore images with more than one dog to avoid problems in the optmization of the model during the training.). From the valid images the script randomly select 10 images from each breed as validation and the rest as training images.
 
-### Training the model to detect dogs and its breeds.
+2. Running the web-app:
+    ```Shell
+    cd code/app/
+    python3 app.py
+    ```
 
-I chose to use the mask-RCNN as base model to this project. I could train an simple and strangtfoward classification pipeline to solve the problem. However I think that using the mask-RCNN would be more fun. I used a coco-dataset pretrained model as base and modified it to segment/detect/classify if a dog is present or not in the image.  If a dog is found it will also classify the detections altorught all the 100 dog breeds. I could directily detect all the dog breeds without these two step-classification (if dog -> dog_breed). Anyway,  as our objective is also enroll new dog breeds after the training it is important that the network recognize if a dog is present or not. 
+3. To test, use the browser from the host machine (outside the docker):
+    ```Shell
+    firefox --sync --new-instance --url localhost:5000
+    ```
+
+
+### Training mask-rcnn model to detect dogs and their breeds.
 
 
 1. Put the model to train:
    ```Shell
-    python3 code/tasks/train.py   
+    python3 code/tasks/train.py  
+
     ```
 
-2.  Wait for a long time until if finish training.....
+2.  Wait for a long time until if finish training. (Take around one day to train =/)
 
 
-### Testing the best trained model.
+### Enrolling The model 
 
-1. Just run:
+1. Just run
    ```Shell
-    python3 code/tasks/demo.py   
+    python3 code/tasks/enroll.py  
+
     ```
+The process of enrolling is based on Knn using the features extracted from each dog breed detection from the fasterRCNN part of the model. The script will enroll all new classes and include some "unknown" samples from the training dataset. It took around 0.08 seconds to enroll in each image. (Including the Unknow and creating the Knn model)
 
-  
+The final accuracy of the model in the test set is: 0.8636
 
-
-
-
-
-
-
-
-
-
-
-
-
+Now you can use the trained model and the enrolled model to test using the web app =).
 
 
 ### Future Work and improvements:
 
-- Use a triplet loss to 
-- Include data augumentation tricks to improve the generability of the model
--
--
--
+
+- Include a copy-and-paste data augmentation step. The idea is to cut only the dog segmentation instance from the training dataset and paste it on a random coco dataset image as background. This augmentation could improve the accuracy of the model.
+
+- Find a smarter way to detect unknowns.
+
+- Include a triplet loss in the mask-rcnn model.  The idea is to make same-class samples near and different-clas samples far in the feature space.
+
+- Improve the scripts and document better this repo.
+
+- Make a fun game where a person uploads its picture, and the system says which dog breed this person is alike. =p
